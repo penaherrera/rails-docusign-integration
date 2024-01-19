@@ -33,3 +33,6 @@
 
 #Ignore .env 
 .env
+
+#Ignore RSA Docusign KEY
+lib/assets/docusign_private_key.txt
