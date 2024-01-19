@@ -1,6 +1,6 @@
 class UsersController < ApplicationController
   before_action :set_user, only: %i[ show edit update destroy request_signature]
-  before_action :authenticate, only: %i[request_signature]
+  #before_action :authenticate, only: %i[request_signature]
 
   # GET /users or /users.json
   def index
@@ -59,7 +59,26 @@ class UsersController < ApplicationController
   end
 
   def request_signature
-    @user
+    pdf_path = Rails.root.join('lib', 'assets', 'f8879.pdf')
+    account_info = authenticate
+
+    args = {
+      account_id: account_info[:account_id],
+      base_path: account_info[:base_path],
+      access_token: account_info[:access_token],
+      signer_email: 'cpena@ioogo.com',
+      signer_name: @user.name,
+      ds_ping_url: ENV['DS_PING_URL'],
+      signer_client_id: 1,
+      pdf_filename: pdf_path #? NOT ASSIGNED
+    }
+
+    
+    @integration_key = ENV['DOCUSIGN_INTEGRATION_KEY']
+    @url = FocusedViewService.new(args).worker
+    render 'users/request_signature'
+  rescue DocuSign_eSign::ApiError => e
+    puts e.message
   end
 
   private
