@@ -1,5 +1,6 @@
 class UsersController < ApplicationController
   before_action :set_user, only: %i[ show edit update destroy request_signature]
+  before_action :authenticate, only: %i[request_signature]
 
   # GET /users or /users.json
   def index
@@ -70,5 +71,58 @@ class UsersController < ApplicationController
     # Only allow a list of trusted parameters through.
     def user_params
       params.require(:user).permit(:name, :last_name, :ssn)
+    end
+
+    def get_consent
+      url_scopes = $SCOPES.join('+')
+      # Construct consent URL
+      redirect_uri = 'https://developers.docusign.com/platform/auth/consent'
+      consent_url = "https://#{ENV['AUTHORIZATION_SERVER']}/oauth/auth?response_type=code&" \
+                    "scope=#{url_scopes}&client_id=#{ENV['DOCUSIGN_INTEGRATION_KEY']}&" \
+                    "redirect_uri=#{redirect_uri}"
+    
+      puts 'Open the following URL in your browser to grant consent to the application:'
+      puts consent_url
+    end
+    
+    def authenticate
+      configuration = DocuSign_eSign::Configuration.new
+      configuration.debugging = true
+      api_client = DocuSign_eSign::ApiClient.new(configuration)
+      api_client.set_oauth_base_path(ENV['AUTHORIZATION_SERVER'])
+    
+      rsa_pk_path = Rails.root.join('lib', 'assets', 'docusign_private_key.txt')
+      rsa_pk = File.read(rsa_pk_path)
+      begin
+        $SCOPES = %w[
+          signature impersonation
+        ]
+
+        token = api_client.request_jwt_user_token(ENV['DOCUSIGN_INTEGRATION_KEY'], ENV['IMPERSONATED_USER_GUID'], rsa_pk, 3600, $SCOPES)
+        user_info_response = api_client.get_user_info(token.access_token)
+        account = user_info_response.accounts.find(&:is_default)
+    
+        {
+          access_token: token.access_token,
+          account_id: account.account_id,
+          base_path: account.base_uri
+        }
+      rescue OpenSSL::PKey::RSAError => e
+        Rails.logger.error e.inspect
+    
+        raise "Please add your private RSA key to: #{rsa_pk}" if File.read(rsa_pk).starts_with? '{RSA_PRIVATE_KEY}'
+    
+        raise
+      rescue DocuSign_eSign::ApiError => e
+        body = JSON.parse(e.response_body)
+        if body['error'] == 'consent_required'
+         # authenticate if get_consent
+        else
+          puts 'API Error'
+          puts body['error']
+          puts body['message']
+          exit
+        end
+      end
     end
 end
