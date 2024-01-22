@@ -70,16 +70,20 @@ class UsersController < ApplicationController
       signer_email: @user.email,
       signer_name: full_name,
       signer_ssn: @user.ssn,
+      cc_email: @user.spouse_email,
+      cc_name: @user.spouse_name,
+      cc_ssn: @user.spouse_ssn,
       ds_ping_url: ENV['DS_PING_URL'],
       signer_client_id: 1,
       pdf_filename: pdf_path
     }
-
+    
     @integration_key = ENV['DOCUSIGN_INTEGRATION_KEY']
     @url = FocusedViewService.new(args).worker
     render 'users/request_signature'
   rescue DocuSign_eSign::ApiError => e
     puts e.message
+    puts e.response_body
   end
 
   private
@@ -90,7 +94,7 @@ class UsersController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def user_params
-      params.require(:user).permit(:name, :last_name, :ssn, :email)
+      params.require(:user).permit(:name, :last_name, :ssn, :email, :spouse_name, :spouse_ssn, :spouse_email)
     end
 
     def get_consent

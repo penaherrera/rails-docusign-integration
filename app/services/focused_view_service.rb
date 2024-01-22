@@ -17,10 +17,13 @@ class FocusedViewService
     signer_email = args[:signer_email]
     signer_name = args[:signer_name]
     signer_ssn = args[:signer_ssn]
+    cc_name = args[:cc_name]
+    cc_email = args[:cc_email] 
+    cc_ssn = args[:cc_ssn]
 
     # Create the envelope definition
     #ds-snippet-start:eSign44Step3
-    envelope = make_envelope(args[:signer_client_id], pdf_filename, signer_email, signer_name, signer_ssn)
+    envelope = make_envelope(args[:signer_client_id], pdf_filename, signer_email, signer_name, signer_ssn, cc_email, cc_name, cc_ssn)
     
     # Call DocuSign to create the envelope
     envelope_api = create_envelope_api(args)
@@ -51,6 +54,7 @@ class FocusedViewService
 
   #ds-snippet-start:eSign44Step4
   def make_recipient_view_request(signer_client_id, ds_return_url, ds_ping_url, signer_email, signer_name)
+    
     view_request = DocuSign_eSign::RecipientViewRequest.new
     # Set the URL where you want the recipient to go once they are done signing
     # should typically be a callback route somewhere in your app.
@@ -88,13 +92,14 @@ class FocusedViewService
   #ds-snippet-end:eSign44Step4
 
   #ds-snippet-start:eSign44Step2
-  def make_envelope(signer_client_id, pdf_filename, signer_email, signer_name, signer_ssn)
+  def make_envelope(signer_client_id, pdf_filename, signer_email, signer_name, signer_ssn, cc_email, cc_name, cc_ssn)
+    
     envelope_definition = DocuSign_eSign::EnvelopeDefinition.new
     envelope_definition.email_subject = 'Please sign this document sent from Ruby SDK'
 
     doc1 = DocuSign_eSign::Document.new
     doc1.document_base64 = Base64.encode64(File.binread(pdf_filename))
-    doc1.name = 'Lorem Ipsum'
+    doc1.name = '8879 Form'
     doc1.file_extension = 'pdf'
     doc1.document_id = '1'
 
@@ -125,7 +130,7 @@ class FocusedViewService
     text_name.font_size = 'size11'
     text_name.bold = 'true'
     text_name.value = signer_name
-    text_name.locked = 'false'
+    text_name.locked = 'true'
     text_name.tab_id = 'legal_name'
     text_name.tab_label = 'Legal name'
 
@@ -139,7 +144,7 @@ class FocusedViewService
     text_number.font_size = 'size11'
     text_number.bold = 'true'
     text_number.value = signer_ssn
-    text_number.locked = 'false'
+    text_number.locked = 'true'
     text_number.tab_id = 'legal_name'
     text_number.tab_label = 'Legal name'
 
@@ -149,8 +154,54 @@ class FocusedViewService
     tabs.text_tabs = [text_name, text_number]
     signer1.tabs = tabs
     # Add the recipients to the envelope object
+    
+    cc1 = DocuSign_eSign::CarbonCopy.new(
+      email: cc_email,
+      name: cc_name,
+      routingOrder: '2',
+      recipientId: '2'
+    )
+
+    sign_here2 = DocuSign_eSign::SignHere.new
+    sign_here2.anchor_string = 'Spouse’s signature'
+    sign_here2.anchor_units = 'pixels'
+    sign_here2.anchor_x_offset = '85'
+    sign_here2.anchor_y_offset = '5'
+
+    text_name2 = DocuSign_eSign::Text.new
+    text_name2.anchor_string = 'Spouse’s name'
+    text_name2.anchor_units = 'pixels'
+    text_name2.anchor_y_offset = '5'
+    text_name2.anchor_x_offset = '70'
+    text_name2.font = 'Helvetica'
+    text_name2.font_size = 'size11'
+    text_name2.bold = 'true'
+    text_name2.value = cc_name
+    text_name2.locked = 'true'
+    text_name2.tab_id = 'legal_name'
+    text_name2.tab_label = 'Legal name'      
+    
+    text_number2 = DocuSign_eSign::Numerical.new
+    text_number2.anchor_string = 'Spouse’s name'
+    text_number2.anchor_units = 'pixels'
+    text_number2.anchor_y_offset = '10'
+    text_number2.anchor_x_offset = '400'
+    text_number2.font = 'Helvetica'
+    text_number2.font_size = 'size11'
+    text_number2.bold = 'true'
+    text_number2.value = cc_ssn
+    text_number2.locked = 'true'
+    text_number2.tab_id = 'legal_name'
+    text_number2.tab_label = 'Legal name'
+
+    tabs2 = DocuSign_eSign::Tabs.new
+    tabs2.sign_here_tabs = [sign_here2]
+    tabs2.text_tabs = [text_name2, text_number2]
+    cc1.tabs = tabs2
+
+
     recipients = DocuSign_eSign::Recipients.new
-    recipients.signers = [signer1]
+    recipients.signers = [signer1, cc1]
 
     envelope_definition.recipients = recipients
     # Request that the envelope be sent by setting status to "sent".
