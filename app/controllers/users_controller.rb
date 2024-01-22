@@ -61,19 +61,20 @@ class UsersController < ApplicationController
   def request_signature
     pdf_path = Rails.root.join('lib', 'assets', 'f8879.pdf')
     account_info = authenticate
+    full_name = @user.name + ' ' + @user.last_name
 
     args = {
       account_id: account_info[:account_id],
       base_path: account_info[:base_path],
       access_token: account_info[:access_token],
-      signer_email: 'cpena@ioogo.com',
-      signer_name: @user.name,
+      signer_email: @user.email,
+      signer_name: full_name,
+      signer_ssn: @user.ssn,
       ds_ping_url: ENV['DS_PING_URL'],
       signer_client_id: 1,
-      pdf_filename: pdf_path #? NOT ASSIGNED
+      pdf_filename: pdf_path
     }
 
-    
     @integration_key = ENV['DOCUSIGN_INTEGRATION_KEY']
     @url = FocusedViewService.new(args).worker
     render 'users/request_signature'
@@ -89,7 +90,7 @@ class UsersController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def user_params
-      params.require(:user).permit(:name, :last_name, :ssn)
+      params.require(:user).permit(:name, :last_name, :ssn, :email)
     end
 
     def get_consent

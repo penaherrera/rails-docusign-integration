@@ -16,10 +16,11 @@ class FocusedViewService
     pdf_filename = args[:pdf_filename]
     signer_email = args[:signer_email]
     signer_name = args[:signer_name]
+    signer_ssn = args[:signer_ssn]
 
     # Create the envelope definition
     #ds-snippet-start:eSign44Step3
-    envelope = make_envelope(args[:signer_client_id], pdf_filename, signer_email, signer_name)
+    envelope = make_envelope(args[:signer_client_id], pdf_filename, signer_email, signer_name, signer_ssn)
     
     # Call DocuSign to create the envelope
     envelope_api = create_envelope_api(args)
@@ -87,7 +88,7 @@ class FocusedViewService
   #ds-snippet-end:eSign44Step4
 
   #ds-snippet-start:eSign44Step2
-  def make_envelope(signer_client_id, pdf_filename, signer_email, signer_name)
+  def make_envelope(signer_client_id, pdf_filename, signer_email, signer_name, signer_ssn)
     envelope_definition = DocuSign_eSign::EnvelopeDefinition.new
     envelope_definition.email_subject = 'Please sign this document sent from Ruby SDK'
 
@@ -109,13 +110,43 @@ class FocusedViewService
     # anchor strings. So the sign_here_2 tab will be used in both document 2 and 3
     # since they use the same anchor string for their "signer 1" tabs.
     sign_here = DocuSign_eSign::SignHere.new
-    sign_here.anchor_string = '/sn1/'
+    sign_here.anchor_string = 'Your signature'
     sign_here.anchor_units = 'pixels'
-    sign_here.anchor_x_offset = '20'
-    sign_here.anchor_y_offset = '10'
+    sign_here.anchor_x_offset = '85'
+    sign_here.anchor_y_offset = '5'
+
+    #Adding Full name of client
+    text_name = DocuSign_eSign::Text.new
+    text_name.anchor_string = 'Taxpayer’s name'
+    text_name.anchor_units = 'pixels'
+    text_name.anchor_y_offset = '5'
+    text_name.anchor_x_offset = '70'
+    text_name.font = 'Helvetica'
+    text_name.font_size = 'size11'
+    text_name.bold = 'true'
+    text_name.value = signer_name
+    text_name.locked = 'false'
+    text_name.tab_id = 'legal_name'
+    text_name.tab_label = 'Legal name'
+
+    #Adding SSN from cleint
+    text_number = DocuSign_eSign::Numerical.new
+    text_number.anchor_string = 'Taxpayer’s name'
+    text_number.anchor_units = 'pixels'
+    text_number.anchor_y_offset = '10'
+    text_number.anchor_x_offset = '400'
+    text_number.font = 'Helvetica'
+    text_number.font_size = 'size11'
+    text_number.bold = 'true'
+    text_number.value = signer_ssn
+    text_number.locked = 'false'
+    text_number.tab_id = 'legal_name'
+    text_number.tab_label = 'Legal name'
+
     # Tabs are set per recipient/signer
     tabs = DocuSign_eSign::Tabs.new
     tabs.sign_here_tabs = [sign_here]
+    tabs.text_tabs = [text_name, text_number]
     signer1.tabs = tabs
     # Add the recipients to the envelope object
     recipients = DocuSign_eSign::Recipients.new
